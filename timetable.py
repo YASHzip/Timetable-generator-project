@@ -152,13 +152,16 @@ class TimetableApp(QMainWindow):
                 QMessageBox.information(self, "Success", f"Added {subject} to {batch} on {day} at slot {time_slot} ({slot_timings[time_slot]})")
                 self.show_timetable()
                 save_timetable(timetable)
-            elif timetable[batch][day][time_slot] == "Lunch":
-                confirmation = QMessageBox.question(self, "Confirm", "adding class at the time of lunch will result in no lunch break. Do you still wish to continue ?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                if confirmation == QMessageBox.Yes:
-                    timetable[batch][day][time_slot] = subject
-                    QMessageBox.information(self, "Success", f"Added {subject} to {batch} on {day} at slot {time_slot} ({slot_timings[time_slot]})")
-                    self.show_timetable()
-                    save_timetable(timetable)
+            elif timetable[batch][day][time_slot] == "Lunch" :
+                if subject.lower() == "free":
+                    QMessageBox.warning(self, "Warning", "cannot add a free class in place of lunch.")
+                else:    
+                    confirmation = QMessageBox.question(self, "Confirm", "adding class at the time of lunch will result in no lunch break. Do you still wish to continue ?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                    if confirmation == QMessageBox.Yes:
+                        timetable[batch][day][time_slot] = subject
+                        QMessageBox.information(self, "Success", f"Added {subject} to {batch} on {day} at slot {time_slot} ({slot_timings[time_slot]})")
+                        self.show_timetable()
+                        save_timetable(timetable)
             else:
                 alternate_slots = self.get_free_slots(batch, day)
                 QMessageBox.warning(self, "Conflict", f"Slot {time_slot} is occupied! Available slots: {', '.join(str(slot) for slot in alternate_slots)}")
@@ -177,6 +180,7 @@ class TimetableApp(QMainWindow):
                     timetable[batch][day][time_slot] = "Lunch"
                     QMessageBox.information(self, "Success", f"Removed {subject} from {batch} on {day} at slot {time_slot}")
                     self.show_timetable()
+                    save_timetable(timetable)
                 else:
                     subject = timetable[batch][day][time_slot]
                     timetable[batch][day][time_slot] = "Free"
