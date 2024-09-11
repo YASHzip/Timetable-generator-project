@@ -1,6 +1,7 @@
 import sys
 import json
-import os  # Import os module to work with file paths
+import os  
+import secrets
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QLabel, QComboBox, QLineEdit, QPushButton, 
     QMessageBox, QVBoxLayout, QWidget, QTextEdit
@@ -19,6 +20,9 @@ slot_timings = {
     5: "2:00-2:55 PM"
 }
 
+# subjects
+subs = ["C Programming", "Engineering Maths", "Linux Lab", "Managing Self", "Free","Free", "Physics","Problem Solving", "Environmental Studies"]
+
 # Load timetable from file or initialize default
 def load_timetable():
     try:
@@ -29,9 +33,9 @@ def load_timetable():
         return {
             "Batch A": {
                 "Monday": ["C Programming", "Linux Lab", "Free", "Lunch","Managing Self","Free"],
-                "Tuesday": ["Problem solving", "Engineering Maths", "Environmental Studies", "Lunch","Engineering Maths","C Programming"],
+                "Tuesday": ["Problem Solving", "Engineering Maths", "Environmental Studies", "Lunch","Engineering Maths","C Programming"],
                 "Wednesday": ["C Programming", "Free", "Engineering Maths", "Lunch","Free","Free"],
-                "Thursday": ["Problem solving", "Free", "Physics", "Lunch","Engineering Maths","Free"],
+                "Thursday": ["Problem Solving", "Free", "Physics", "Lunch","Engineering Maths","Free"],
                 "Friday": ["Environmental Studies", "C Programming", "Free", "Lunch","Linux Lab", "Problem Solving"]
             }
         }
@@ -48,7 +52,7 @@ class TimetableApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Timetable Generator by CRACK JACKS")
-        self.setGeometry(500, 100, 900, 900)
+        self.setGeometry(400, 100, 500, 600)
         
         # Initialize UI elements
         self.initUI()
@@ -84,17 +88,22 @@ class TimetableApp(QMainWindow):
         layout.addWidget(self.subject_entry)
 
         # Buttons for adding, deleting, showing free slots, and exporting timetable
-        self.add_class_btn = QPushButton("Add Extra Class")
+        self.add_class_btn = QPushButton("Add Lecture")
         self.add_class_btn.clicked.connect(self.add_extra_class)
         layout.addWidget(self.add_class_btn)
 
-        self.delete_class_btn = QPushButton("Delete Extra Class")
+        self.delete_class_btn = QPushButton("Delete Lecture")
         self.delete_class_btn.clicked.connect(self.delete_extra_class)
         layout.addWidget(self.delete_class_btn)
 
         self.show_slots_btn = QPushButton("Show Free Slots")
         self.show_slots_btn.clicked.connect(self.show_free_slots)
         layout.addWidget(self.show_slots_btn)
+
+        # Delete batch button
+        self.delete_batch_btn = QPushButton("Delete Selected Batch")
+        self.delete_batch_btn.clicked.connect(self.delete_batch)
+        layout.addWidget(self.delete_batch_btn)
 
         self.export_btn = QPushButton("Export Timetable")
         self.export_btn.clicked.connect(self.export_timetable)
@@ -110,10 +119,10 @@ class TimetableApp(QMainWindow):
         self.add_batch_btn.clicked.connect(self.add_new_batch)
         layout.addWidget(self.add_batch_btn)
 
-        # Delete batch button
-        self.delete_batch_btn = QPushButton("Delete Selected Batch")
-        self.delete_batch_btn.clicked.connect(self.delete_batch)
-        layout.addWidget(self.delete_batch_btn)
+        #Auto generate
+        self.auto_generate_btn = QPushButton("Auto generate timetable")
+        self.auto_generate_btn.clicked.connect(self.automatic_generation)
+        layout.addWidget(self.auto_generate_btn)
 
         # Display timetable
         self.timetable_display = QTextEdit()
@@ -144,29 +153,41 @@ class TimetableApp(QMainWindow):
                 self.show_timetable()
                 save_timetable(timetable)
             elif timetable[batch][day][time_slot] == "Lunch":
-                QMessageBox.warning(self, "Warning", "Cannot add class during Lunch break!")
+                confirmation = QMessageBox.question(self, "Confirm", "adding class at the time of lunch will result in no lunch break. Do you still wish to continue ?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if confirmation == QMessageBox.Yes:
+                    timetable[batch][day][time_slot] = subject
+                    QMessageBox.information(self, "Success", f"Added {subject} to {batch} on {day} at slot {time_slot} ({slot_timings[time_slot]})")
+                    self.show_timetable()
+                    save_timetable(timetable)
             else:
                 alternate_slots = self.get_free_slots(batch, day)
                 QMessageBox.warning(self, "Conflict", f"Slot {time_slot} is occupied! Available slots: {', '.join(str(slot) for slot in alternate_slots)}")
-        except Exception as e:
-            QMessageBox.warning(self, "Warning", "Slot cannot be empty nor it should contain any invalid input.")
+        except:
+            QMessageBox.warning(self, "Warning", "Slot cannot be empty or contain any invalid input.")
             # QMessageBox.critical(self, "Error", str(e))
 
     def delete_extra_class(self):
-        batch = self.batch_combo.currentText()
-        day = self.day_combo.currentText()
-        time_slot = int(self.slot_entry.text())
         try:
+            batch = self.batch_combo.currentText()
+            day = self.day_combo.currentText()
+            time_slot = int(self.slot_entry.text())
             if timetable[batch][day][time_slot] != "Lunch" and timetable[batch][day][time_slot] != "Free":
-                subject = timetable[batch][day][time_slot]
-                timetable[batch][day][time_slot] = "Free"
-                QMessageBox.information(self, "Success", f"Removed {subject} from {batch} on {day} at slot {time_slot}")
-                self.show_timetable()
-                save_timetable(timetable)
+                if timetable[batch][day][time_slot] == timetable[batch][day][3]:
+                    subject = timetable[batch][day][time_slot]
+                    timetable[batch][day][time_slot] = "Lunch"
+                    QMessageBox.information(self, "Success", f"Removed {subject} from {batch} on {day} at slot {time_slot}")
+                    self.show_timetable()
+                else:
+                    subject = timetable[batch][day][time_slot]
+                    timetable[batch][day][time_slot] = "Free"
+                    QMessageBox.information(self, "Success", f"Removed {subject} from {batch} on {day} at slot {time_slot}")
+                    self.show_timetable()
+                    save_timetable(timetable)
             else:
                 QMessageBox.warning(self, "Warning", "Cannot delete a lunch break or a free slot!")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+        except:
+            QMessageBox.warning(self,"Warning!", "Slot cannot be empty or contain any invalid input.")    
+            # QMessageBox.critical(self, "Error", str(e))
 
     def show_free_slots(self):
         batch = self.batch_combo.currentText()
@@ -192,8 +213,9 @@ class TimetableApp(QMainWindow):
         if new_batch_name and new_batch_name not in timetable:
             timetable[new_batch_name] = {day: ["Free", "Free", "Lunch", "Free", "Free","Free"] for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
             self.batch_combo.addItem(new_batch_name)
-            QMessageBox.information(self, "Success", f"New batch '{new_batch_name}' has been added!")
+            QMessageBox.information(self, "Success!", f"New batch '{new_batch_name}' has been added!")
             self.new_batch_entry.clear()
+            self.show_timetable()
             save_timetable(timetable)
         else:
             QMessageBox.warning(self, "Warning", "Batch name is empty or already exists!") 
@@ -201,8 +223,7 @@ class TimetableApp(QMainWindow):
     def delete_batch(self):
         batch = self.batch_combo.currentText()
         if batch: 
-            confirm = QMessageBox.question(self, "Confirm Deletion", f"Are you sure you want to delete the batch '{batch}'?",
-                                           QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            confirm = QMessageBox.question(self, "Confirm Deletion", f"Are you sure you want to delete the batch '{batch}'?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if confirm == QMessageBox.Yes:
                 timetable.pop(batch, None)
                 self.batch_combo.removeItem(self.batch_combo.currentIndex())
@@ -228,9 +249,27 @@ class TimetableApp(QMainWindow):
             QMessageBox.information(self, "Export", f"Timetable has been exported to {file_path}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to export timetable: {str(e)}")
+    
+    def automatic_generation(self):
+        try:
+            auto_batch = self.new_batch_entry.text()
+            if auto_batch not in timetable:
+                timetable[auto_batch] = {day: [secrets.choice(subs), secrets.choice(subs), secrets.choice(subs),"Lunch", secrets.choice(subs),secrets.choice(subs)] for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
+                self.batch_combo.addItem(auto_batch)
+                QMessageBox.information(self, "Success!", f"New batch '{auto_batch}' has been added. ")
+                self.show_timetable()
+                self.new_batch_entry.clear()
+                save_timetable(timetable)
+            elif auto_batch in timetable:
+                QMessageBox.warning(self, "Warning", "Batch already exists!")
+
+        except:
+            QMessageBox.warning(self, "Warning!","slot cannot be empty or contain any invalid value.")
+
 
 # Run the application
 if __name__ == "__main__":
+
     app = QApplication(sys.argv)
     window = TimetableApp()
     window.show()
